@@ -1,0 +1,15 @@
+{
+  "title": "原神 (English)",
+  "revision": "2026-11-10T21:10:59Z",
+  "format": 3,
+  "sequenced": true,
+  "sourceLanguage": "zh",
+  "targetLanguage": "en",
+  "author": "miHoYo (game text); dictionary built from Dimbreath/animegamedata2",
+  "description": "20,953 Genshin Impact names and terms (characters, places, enemies, wildlife, weapons, artifacts, items, furniture, talents, quests, glossary terms, card game cards) with their in-game English names and descriptions and simplified/traditional lookup forms. Game version 7.2.0 (CNRELWin7.2.0_R49086080_S49291486_D49291486).",
+  "attribution": "Text from Genshin Impact (原神), © miHoYo / COGNOSPHERE. Extracted from the game data dump at https://gitlab.com/Dimbreath/animegamedata2 (CNRELWin7.2.0_R49086080_S49291486_D49291486, 2026-11-05). Unofficial fan-made dictionary for personal study; not affiliated with or endorsed by miHoYo.\n",
+  "isUpdatable": true,
+  "indexUrl": "https://raw.githubusercontent.com/caocaochan/genshin-yomitan/main/index_en.json",
+  "downloadUrl": "https://github.com/caocaochan/genshin-yomitan/releases/latest/download/genshin_en.zip",
+  "url": "https://github.com/caocaochan/genshin-yomitan"
+}
