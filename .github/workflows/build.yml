@@ -1,0 +1,125 @@
+name: Build
+
+# Rebuilds and publishes both dictionaries when the game data dump has a new commit (checked daily),
+# when the generator, overrides or styles change on main, or on demand.
+on:
+  schedule:
+    - cron: "0 6 * * *" # 06:00 UTC daily; builds only if the data dump changed
+  push:
+    branches: [main]
+    paths:
+      - build_dictionary.py
+      - overrides.tsv
+      - styles.css
+      - requirements.txt
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Build even if the game data is unchanged"
+        type: boolean
+        default: false
+      dry_run:
+        description: "Build and validate only; don't publish a release or update the indexes"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build
+  cancel-in-progress: false
+
+env:
+  DATA_REPO: https://gitlab.com/Dimbreath/animegamedata2.git
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Check for new game data
+        id: check
+        env:
+          EVENT: ${{ github.event_name }}
+          FORCE: ${{ inputs.force || false }}
+        run: |
+          latest=$(git ls-remote "$DATA_REPO" refs/heads/main | cut -f1)
+          current=$(cat data_commit.txt 2>/dev/null || true)
+          echo "latest data commit: $latest, last published: $current"
+          if [ -z "$latest" ]; then echo "::error::could not read $DATA_REPO"; exit 1; fi
+          if [ "$EVENT" = schedule ] || { [ "$EVENT" = workflow_dispatch ] && [ "$FORCE" != true ]; }; then
+            if [ "$latest" = "$current" ]; then
+              echo "Game data unchanged; nothing to build."
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
+      - uses: actions/setup-python@v6
+        if: steps.check.outputs.skip != 'true'
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        if: steps.check.outputs.skip != 'true'
+        run: python -m pip install -r requirements.txt
+
+      - name: Build dictionaries
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          python build_dictionary.py all
+          git -C data/agd rev-parse HEAD > data_commit.txt
+          python - <<'EOF'
+          import json, zipfile
+          for z, i in (("dist/genshin_zh.zip", "index.json"), ("dist/genshin_en.zip", "index_en.json")):
+              inner = json.loads(zipfile.ZipFile(z).read("index.json"))
+              outer = json.load(open(i, encoding="utf-8"))
+              assert inner == outer, f"{z} index differs from {i}"
+              banks = [n for n in zipfile.ZipFile(z).namelist() if n.startswith("term_bank_")]
+              assert banks, f"{z} has no term banks"
+              print(z, inner["revision"], len(banks), "banks")
+          EOF
+
+      - name: Publish release
+        id: release
+        if: steps.check.outputs.skip != 'true' && inputs.dry_run != true
+        run: |
+          version=$(python -c "import json; print(json.load(open('index.json'))['description'].split('Game version ')[1].split(' ')[0])")
+          revision=$(python -c "import json; print(json.load(open('index.json'))['revision'])")
+          stamp=$(echo "$revision" | tr -d ':-' | cut -c1-13)   # e.g. 20261110T2110
+          tag="v${version}-${stamp}"
+          build=$(git -C data/agd log -1 --format=%s)
+          headwords=$(python -c "import json; print(json.load(open('index.json'))['description'].split(' ')[0])")
+          {
+            echo "Game version ${version} (\`${build}\`), ${headwords} headwords."
+            echo
+            echo "- \`genshin_zh.zip\`: 原神, Chinese definitions"
+            echo "- \`genshin_en.zip\`: 原神 (English), English definitions"
+            echo
+            echo "Import into Yomitan from the Dictionaries settings. Both are updatable (revision ${revision})."
+          } > dist/release_notes.md
+          gh release create "$tag" dist/genshin_zh.zip dist/genshin_en.zip \
+            --target "$GITHUB_SHA" \
+            --title "Game version ${version} (${revision:0:10})" \
+            --notes-file dist/release_notes.md \
+            --latest
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      # Commit the indexes only after the ZIPs are live, so Yomitan never sees a new revision
+      # before it can download it.
+      - name: Update indexes
+        if: steps.check.outputs.skip != 'true' && inputs.dry_run != true
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.json index_en.json source_attribution.txt README.md data_commit.txt
+          git commit -m "Update dictionaries to game version $VERSION"
+          git pull --rebase origin main
+          git push origin HEAD:main

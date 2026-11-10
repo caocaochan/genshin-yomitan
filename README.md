@@ -43,7 +43,15 @@ py -m venv .venv
 
 `fetch` clones or updates `data/agd`; `build` writes `dist/genshin_zh.zip` and `dist/genshin_en.zip`, their indexes `index.json` and `index_en.json`, `source_attribution.txt` and the stats above. The index revision is the UTC build time, so every published rebuild sorts newer than the last one, which is what Yomitan's updater checks; the game build is in the description.
 
-To publish an update: rebuild, commit `index.json` and `index_en.json`, and attach both ZIPs to a new GitHub release. Yomitan reads the index from `main` and downloads the ZIPs from the latest release, so the release must be published before or with the index commit.
+## Automatic builds
+
+The [build workflow](.github/workflows/build.yml) publishes new versions without manual steps:
+
+- **Daily at 06:00 UTC** it checks the game data dump and rebuilds only if it has a new commit (the last published one is in `data_commit.txt`)
+- **On push to `main`** it rebuilds when `build_dictionary.py`, `overrides.tsv`, `styles.css` or `requirements.txt` change, so reading fixes publish themselves
+- **By hand** from the Actions tab, with `force` to rebuild unchanged data and `dry_run` to build without publishing
+
+Each build attaches both ZIPs to a new release tagged with the game version and build time, then commits `index.json` and `index_en.json`. The indexes are committed after the release is live, so Yomitan never sees a revision it cannot download yet.
 
 ## Files
 
@@ -51,6 +59,8 @@ To publish an update: rebuild, commit `index.json` and `index_en.json`, and atta
 - `overrides.tsv` — manual pinyin readings
 - `styles.css` — entry styles packaged into the ZIP (same stylesheet as the HYDCD, chengyu and Wikipedia dictionaries)
 - `index.json`, `index_en.json`, `source_attribution.txt` — written by the build
+- `data_commit.txt` — game data commit of the latest published build
+- `.github/workflows/build.yml` — daily check, build and release
 
 ## License
 
