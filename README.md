@@ -16,7 +16,7 @@ Download [`genshin_zh.zip`](https://github.com/caocaochan/genshin-yomitan/releas
 ## Contents
 
 <!-- stats:start -->
-- 20,953 headwords from game version 7.2.0 (`CNRELWin7.2.0_R49086080_S49291486_D49291486`, 2026-11-05), 37,488 simplified and traditional lookup entries
+- 20,953 headwords from game version 7.2.0 (`CNRELWin7.2.0_R49411577_S49291486_D49419538`, 2026-11-12), 37,488 simplified and traditional lookup entries
 - Senses by category: 角色 127、地区 826、敌人 356、生物 226、武器 261、圣遗物 405、道具 5,093、摆设 3,226、衣装 29、风之翼 19、天赋 826、命之座 952、武器特效 221、术语 116、书籍 79、任务 2,802、七圣召唤 507、NPC 5,777
 - Yomitan packages: dictionary format 3; `genshin_zh.zip` 4.2 MB, `genshin_en.zip` 4.5 MB
 <!-- stats:end -->
